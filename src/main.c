@@ -20,55 +20,59 @@ static inline void BootError(void)
     ExecOSD(1, args);
 }
 
-// Function to extract the filename from a full path
-static char *GetFileName(const char *filePath)
+// Function to find .cfg file
+static int FindCfgFile(char *cfgFile, size_t cfgFileSize)
 {
-    scr_printf("File Path: %s\n", filePath);
-    // Check if the file path starts with "mass:" and skip it if so
-    const char *prefix = "mass:";
-    if (strncmp(filePath, prefix, strlen(prefix)) == 0) {
-        filePath += strlen(prefix); // Skip "mass:" prefix
+    DIR *d;
+    struct dirent *dir;
+    d = opendir("pfs0:/");
+    if (d) {
+        while ((dir = readdir(d)) != NULL) {
+            char *dot = strrchr(dir->d_name, '.');
+            if (dot && (strcasecmp(dot, ".cfg") == 0)) {
+                strncpy(cfgFile, dir->d_name, cfgFileSize - 1);
+                cfgFile[cfgFileSize - 1] = '\0'; // Ensure null-termination
+                closedir(d);
+                return 0; // Success
+            }
+        }
+        closedir(d);
     }
-
-    // Find the last occurrence of '/' in the path
-    char *fileName = strrchr(filePath, '/');
-    if (fileName)
-        return fileName + 1; // Return the file name part (skip the '/')
-    return (char *)filePath; // If no '/', return the original path (likely just the file name)
+    return -1; // Failure
 }
 
-// Function to parse the elfFileName and populate boot_argv
-static void ParseFileName(char *elfFileName, char *boot_argv[])
+// Function to parse the cfgFileName and populate boot_argv
+static void ParseFileName(char *cfgFileName, char *boot_argv[])
 {
     char *dotPos, *dashPos, *extPos;
 
     // Find the position of the last "-" in the filename (before CD/DVD)
-    dashPos = strrchr(elfFileName, '-');
+    dashPos = strrchr(cfgFileName, '-');
     if (dashPos) {
         *dashPos = '\0'; // Terminate the string at the '-' to separate ISO name from media type
         boot_argv[2] = dashPos + 1; // Extract the media type (e.g., CD/DVD)
 
-        // Remove ".elf" from boot_argv[2] if present
-        extPos = strstr(boot_argv[2], ".elf");
+        // Remove ".cfg" from boot_argv[2] if present
+        extPos = strstr(boot_argv[2], ".cfg");
         if (extPos) {
-            *extPos = '\0'; // Remove the ".elf" extension
+            *extPos = '\0'; // Remove the ".cfg" extension
         }
     } else {
         BootError();
     }
 
     // Set boot_argv[0] to the full ISO filename (before the dash)
-    boot_argv[0] = elfFileName;
+    boot_argv[0] = cfgFileName;
 
     // Find the second dot in the filename to extract the game ID (e.g., "SLUS_203.75")
-    dotPos = strchr(elfFileName, '.');
+    dotPos = strchr(cfgFileName, '.');
     if (dotPos) {
         dotPos = strchr(dotPos + 1, '.'); // Find the second dot
         if (dotPos) {
-            int idLength = dotPos - elfFileName;
+            int idLength = dotPos - cfgFileName;
             // Allocate and copy the game ID into boot_argv[1]
             boot_argv[1] = malloc(idLength + 1);
-            strncpy(boot_argv[1], elfFileName, idLength);
+            strncpy(boot_argv[1], cfgFileName, idLength);
             boot_argv[1][idLength] = '\0'; // Null-terminate the game ID
         }
     }
@@ -136,6 +140,9 @@ void GetOPLPath(char *name, size_t nameSize, char *oplPartition, size_t oplParti
 
 int main(int argc, char *argv[])
 {
+    char cwd[256];
+    char cfgFile[256];
+
     // Initialize and configure enviroment
     if (argc > 1) {
         while (!SifIopReset(NULL, 0)) {}
@@ -149,7 +156,6 @@ int main(int argc, char *argv[])
     LoadModules();
     SifLoadFileExit();
     SifExitIopHeap();
-    init_scr();
 
     #define NAME_SIZE 128
     #define OPL_PARTITION_SIZE 128
@@ -159,38 +165,43 @@ int main(int argc, char *argv[])
     char oplPartition[OPL_PARTITION_SIZE];
     char oplFilePath[OPL_FILE_PATH_SIZE];
 
-    GetOPLPath(name, NAME_SIZE, oplPartition, OPL_PARTITION_SIZE, oplFilePath, OPL_FILE_PATH_SIZE);
+    // Get the current working directory
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        BootError();
+        return 1;
+    }
 
-    scr_printf("OPL Partition: %s\n", oplPartition);
-    sleep(2);
-    scr_printf("OPL File Path: %s\n", oplFilePath);
-    sleep(2);
+     // Remove ":pfs:" from the end of the current working directory path
+    char *pfs_pos = strstr(cwd, ":pfs:");
+    if (pfs_pos) {
+        *pfs_pos = '\0'; // Terminate the string before ":pfs:"
+    }
 
-    // Get the filename of the executable from argv[0]
-    char *elfFileName = GetFileName(argv[0]);
-    scr_printf("ELF file name: %s\n", elfFileName);  // Print the ELF file name for debugging
-    sleep(2);
+    // Mount the current working directory
+    if (fileXioMount("pfs0:", cwd, FIO_MT_RDWR) != 0) {
+        BootError();
+        return 1;
+    }
+
+    // Find an cfg file in the current working directory
+    if (FindCfgFile(cfgFile, sizeof(cfgFile)) != 0) {
+        BootError();
+        return 1;
+    }
 
     // Parse the ELF filename and populate boot_argv
     char *boot_argv[4];
-    ParseFileName(elfFileName, boot_argv);  // This will populate boot_argv[0], [1], [2]
+    ParseFileName(cfgFile, boot_argv);  // This will populate boot_argv[0], [1], [2]
 
     // Set the fourth argument (e.g., "bdm")
     boot_argv[3] = "bdm";
 
-    // Print boot_argv values for debugging
-    scr_printf("boot_argv[0]: %s\n", boot_argv[0]);
-    sleep(2);
-    scr_printf("boot_argv[1]: %s\n", boot_argv[1]);
-    sleep(2);
-    scr_printf("boot_argv[2]: %s\n", boot_argv[2]);
-    sleep(2);
-    scr_printf("boot_argv[3]: %s\n", boot_argv[3]);
-    sleep(2);
+    // Unmount cwd
+    fileXioUmount("pfs0:");
+
+    GetOPLPath(name, NAME_SIZE, oplPartition, OPL_PARTITION_SIZE, oplFilePath, OPL_FILE_PATH_SIZE);
     
     // Launch OPL with arguments
-    scr_printf("Launching OPL...");
-    sleep(5);
     if (LoadELFFromFile(oplFilePath, 4, boot_argv) != 0) {
         BootError();
         return 1;

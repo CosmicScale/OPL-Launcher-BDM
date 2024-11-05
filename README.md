@@ -3,16 +3,28 @@
 OPL-Launcher-BDM reads `hdd0:/__common/OPL/conf_hdd.cfg` to launch `$OPL/OPNPS2LD.ELF` and uses OPL's `autoLaunchBDMGame` function.
 
 **Note:**
-This is currently a test app, as `autoLaunchBDMGame` is not yet functional.
+This is currently a test app, as OPL's `autoLaunchBDMGame` function is not yet fully functional.
 
 ## Usage:
-Rename `OPL-Launcher-BDM.elf` to match the game you wish to launch. For example:
+Create a `.cfg` file with a filename that matches the game you wish to launch, using the suffix `CD` or `DVD` depending on the game. For example:
 
-- `SLUS_203.75.Mister Mosquito.iso-CD.elf`
+- `SLUS_203.75.Mister Mosquito.iso-CD.cfg`
 
 or
 
-- `SLUS_203.94.Ecco the Dolphin.iso-DVD.elf`
+- `SLUS_203.94.Ecco the Dolphin.iso-DVD.cfg`
+
+Place the `.cfg` file in the same location as `OPL-Launcher-BDM.elf`
+
+You can also create a `launcher partition` on the PS2 HDD for compatibility with HDDOSD and PSBBN. Create a 128 MB partition and inject `system.cnf` and `icon.sys` into the header of the partition.
+
+Prepare a signed executable (for example, by using [this app](https://www.psx-place.com/resources/kelftool-fmcb-compatible-fork.1104/))
+
+```cmd
+        kelftool encrypt mbr OPL-Launcher-BDM.elf EXECUTE.KELF
+```
+
+Place `EXECUTE.KELF` and `.cfg` file in the root of the partition.
 
 ## Credits:
 - Written by [CosmicScale](https://github.com/CosmicScale)
