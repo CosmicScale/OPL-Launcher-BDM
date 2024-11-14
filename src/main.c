@@ -61,22 +61,29 @@ static void ParseFileName(char *cfgFileName, char *boot_argv[])
         BootError();
     }
 
-    // Set boot_argv[0] to the full ISO filename (before the dash)
-    boot_argv[0] = cfgFileName;
-
-    // Find the second dot in the filename to extract the game ID (e.g., "SLUS_203.75")
+    // Find the second dot in the filename to set boot_argv[0] (ISO name starting after second dot)
     dotPos = strchr(cfgFileName, '.');
     if (dotPos) {
         dotPos = strchr(dotPos + 1, '.'); // Find the second dot
         if (dotPos) {
-            int idLength = dotPos - cfgFileName;
-            // Allocate and copy the game ID into boot_argv[1]
-            boot_argv[1] = malloc(idLength + 1);
-            strncpy(boot_argv[1], cfgFileName, idLength);
-            boot_argv[1][idLength] = '\0'; // Null-terminate the game ID
+            boot_argv[0] = dotPos + 1; // Start boot_argv[0] from the character after the second dot
+        } else {
+            BootError(); // Handle cases with fewer than two dots
         }
+    } else {
+        BootError(); // Handle cases with fewer than one dot
+    }
+
+    // Find the game ID and set it in boot_argv[1]
+    if (dotPos) {
+        int idLength = dotPos - cfgFileName;
+        // Allocate and copy the game ID into boot_argv[1]
+        boot_argv[1] = malloc(idLength + 1);
+        strncpy(boot_argv[1], cfgFileName, idLength);
+        boot_argv[1][idLength] = '\0'; // Null-terminate the game ID
     }
 }
+
 
 // Locate OPL partition if on HDD
 void GetOPLPath(char *name, size_t nameSize, char *oplPartition, size_t oplPartitionSize, char *oplFilePath, size_t oplFilePathSize)
@@ -189,7 +196,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Parse the ELF filename and populate boot_argv
+    // Parse the cfg filename and populate boot_argv
     char *boot_argv[4];
     ParseFileName(cfgFile, boot_argv);  // This will populate boot_argv[0], [1], [2]
 
