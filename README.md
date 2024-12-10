@@ -1,32 +1,44 @@
 # OPL-Launcher-BDM
 
-OPL-Launcher-BDM reads `hdd0:/__common/OPL/conf_hdd.cfg` to launch `$OPL/OPNPS2LD.ELF` and uses OPL's `autoLaunchBDMGame` function.
+Designed to be used with the [PSBBN Definitive English Patch 2.0](https://github.com/CosmicScale/PSBBN-Definitive-English-Patch)
+
+OPL Launcher BDM reads `hdd0:/__common/OPL/conf_hdd.cfg` to launch `$OPL/OPNPS2LD.ELF` and uses OPL's `autoLaunchBDMGame` function to load PS2 games from a block device.
+
+Now also incorporates [POPStarter-Starter](https://github.com/CosmicScale/Retro-GEM-POPStarter-Starter) functonality for PS1 games.
 
 **Note:**
-This is currently a test app, as OPL's `autoLaunchBDMGame` function is not yet fully functional.
+Currently only working with this [custom build of OPL](https://github.com/CosmicScale/Open-PS2-Loader-Retro-GEM/tree/psbbn-definitive-ver)
 
 ## Usage:
-Create a `.cfg` file with a gameid and filename that matches the game you wish to launch, using the suffix `CD` or `DVD` depending on the game. For example:
+Create a file named `launcher.cfg` and place the file in the same location as `OPL-Launcher-BDM.elf` or `OPL-Launcher-BDM.KELF`.
 
-To launch the game `Mister Mosquito.iso`:
+Example file contents for PS2 games:
+```
+file_name=Ecco the Dolphin.iso
+title_id=SLUS_203.94
+disc_type=DVD
+```
 
-- `SLUS_203.75.Mister Mosquito.iso-CD.cfg`
+Example file contents for PS1 games:
+```
+file_name=Ape Escape.VCD
+title_id=SCUS_944.23
+disc_type=POPS
+```
 
-or to launch the game `Ecco the Dolphin.iso`:
+All PS2 games will be launched from the first BDM decice found and assigned `mass0`. This could be the internal HDD, USB, iLink or MX4ISO. Be mindfull of what devices are connected.
 
-- `SLUS_203.94.Ecco the Dolphin.iso-DVD.cfg`
+For PS1 games, place the .VCD files on the internal HDD in the `__common/POPS` folder along with a renamed `POPStarter.elf` matching each .VCD file
 
-Place the `.cfg` file in the same location as `OPL-Launcher-BDM.elf`. All games will be launched from `mass0`.
-
-You can also create a "Launcher Partition" on the PS2 HDD for compatibility with HDDOSD and PSBBN. Create a 128 MB partition and inject `system.cnf` and `icon.sys` into the header of the partition.
+You can create "OPL Launcher" partitions on the PS2 HDD for compatibility with HDDOSD and PSBBN. Create a 128 MB partition then inject `system.cnf`, `icon.sys` and `list.ico` into the header of the partition.
 
 Prepare a signed executable (for example, by using [this app](https://www.psx-place.com/resources/kelftool-fmcb-compatible-fork.1104/))
 
 ```cmd
-        kelftool encrypt mbr OPL-Launcher-BDM.elf EXECUTE.KELF
+kelftool encrypt mbr OPL-Launcher-BDM.elfOPL-Launcher-BDM.KELF
 ```
 
-Place `EXECUTE.KELF` and `.cfg` file in the root of the partition.
+Place `OPL-Launcher-BDM.KELF` and `launcher.cfg` files in the root of the partition.
 
 ## Credits:
 - Written by [CosmicScale](https://github.com/CosmicScale)
