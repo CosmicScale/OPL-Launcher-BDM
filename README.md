@@ -11,7 +11,7 @@ Loads a corresponding `POPStarter.elf` from the `__.POPS` partition.
 Supports Game ID for the Pixel FX Retro GEM for both PS2 and PS1 games.
 
 **Note:**
-Currently only working with this [custom build of OPL](https://github.com/CosmicScale/Open-PS2-Loader-Retro-GEM/tree/psbbn-definitive-ver)
+Requires OPL v1.2.0-Beta-2197-d5e0998 or later, which can be downloaded [here](https://github.com/ps2homebrew/Open-PS2-Loader/releases/tag/latest)
 
 ## Usage:
 Create a file named `launcher.cfg` and place the file in the same location as `OPL-Launcher-BDM.elf` or `OPL-Launcher-BDM.KELF`.
